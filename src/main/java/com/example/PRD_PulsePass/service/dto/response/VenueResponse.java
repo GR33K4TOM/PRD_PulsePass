@@ -1,4 +1,4 @@
-package com.example.PRD_PulsePass.service.dto.dto.response;
+package com.example.PRD_PulsePass.service.dto.response;
 
 public enum VenueResponse {
 

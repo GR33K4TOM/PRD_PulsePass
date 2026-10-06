@@ -1,9 +1,9 @@
 # PRD_PulsePass - V-1.0.0
 
-PulsePass es un caso de estudio académico para el diseño e implementación de la capa de persistencia de una plataforma de eventos y entradas.
+PulsePass es un caso de estudio académico para el diseño e implementación de la capa de persistencia y servicios de una plataforma de eventos y entradas.
 
 ## ¿Qué se espera?
-Demostrar la capacidad de transformar requisitos de negocio en un modelo relacional robusto, utilizando Flyway para el versionado de base de datos, Spring Data JPA para el acceso a datos y Testcontainers para pruebas de integración reales.
+Demostrar la capacidad de transformar requisitos de negocio en un modelo relacional robusto y coordinar la lógica transaccional a través de servicios, utilizando Spring Data JPA, MapStruct, JUnit 5 con Mockito, y Flyway junto a Testcontainers.
 
 ## Sección Técnica
 - **Lenguaje:** Java 21
@@ -20,6 +20,12 @@ Demostrar la capacidad de transformar requisitos de negocio en un modelo relacio
    - `V2`: Carga de datos inicial de artistas.
    - `V3`: Añadida columna de URL de streaming.
 3. **Consultas:** Uso de *Query Methods* y *JPQL* en los repositorios para resolver búsquedas, filtros y reportes solicitados por negocio.
+
+## Estructura de la Capa de Servicios
+1. **DTOs (Data Transfer Objects):** Uso de `records` de Java para establecer el contrato público y evitar la exposición de entidades persistentes.
+2. **Mapeos (MapStruct):** Uso de `MapStruct` para conversiones automatizadas y consistentes entre `Entities` y `DTOs`.
+3. **Lógica de Negocio:** Interfaces de servicio (ej. `EventService`, `TicketService`) e implementaciones (`@Service`) inyectadas por constructor. Centralizan operaciones atómicas con manejo de transacciones (`@Transactional`), control de reglas del negocio (aforos, estados, edades) y delegación a los repositorios.
+4. **Manejo de Errores:** Excepciones de dominio personalizadas y claras (`ResourceNotFoundException`, `BusinessRuleException`, `DuplicateResourceException`).
 
 ## Cómo Usar y Ejecutar Pruebas
 

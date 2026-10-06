@@ -1,4 +1,4 @@
-# PRD_PulsePass - V-1.0.0
+# PRD_PulsePass - V-0.0.1
 
 PulsePass es un caso de estudio académico para el diseño e implementación de la capa de persistencia y servicios de una plataforma de eventos y entradas.
 

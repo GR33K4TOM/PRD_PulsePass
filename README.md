@@ -31,3 +31,16 @@ Abre una terminal en la raíz del proyecto y ejecuta:
 ```bash
 ./mvnw clean test
 ```
+
+### Importante
+
+# Variables de entorno
+
+copiar del ejemplo en .env.example a un archivo .env en base a la maquina donde se clone el repositorio
+
+### Linux
+
+```bash
+ touch .env \ 
+ cat .env.example | tee .env
+```

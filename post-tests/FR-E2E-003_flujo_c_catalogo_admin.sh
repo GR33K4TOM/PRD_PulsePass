@@ -20,7 +20,7 @@ echo "==========================================================================
 echo "FLUJO C (FR-E2E-003): GESTIÓN ADMINISTRATIVA DE EVENTOS Y PUBLICACIÓN"
 echo "================================================================================"
 
-PAYLOAD_NEW_EVENT=$(printf '{"eventCode":"%s","name":"PulsePass Sunset Session %s","description":"Concierto E2E controlado","category":"CONCERT","eventDate":"2027-11-15T20:00:00","minimumAge":18,"venueCode":"%s"}' \
+PAYLOAD_NEW_EVENT=$(printf '{"eventCode":"%s","name":"PulsePass Sunset Session %s","description":"Concierto E2E controlado","category":"MUSIC","eventDate":"2027-11-15T20:00:00","minimumAge":18,"venueCode":"%s"}' \
     "${EVENT_TO_PUBLISH_CODE}" "${RUN_ID}" "${VENUE_ACTIVE_CODE}")
 
 # 1. Control de acceso en creación de eventos (TC-SEC-003 y TC-SEC-004)

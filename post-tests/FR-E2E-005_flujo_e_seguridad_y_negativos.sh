@@ -104,7 +104,7 @@ PAYLOAD_BUY_DRAFT=$(printf '{"userEmail":"%s","eventCode":"%s","type":"GENERAL"}
 run_http_test "TC-BIZ-002" "Comprar ticket para un evento en estado DRAFT (${DRAFT_EVENT_CODE}) retorna 409 Conflict" \
     "POST" "/api/tickets" "409" "${USER_A_TOKEN:-}" "${PAYLOAD_BUY_DRAFT}"
 
-PAYLOAD_INACTIVE_VENUE=$(printf '{"eventCode":"EVT-INACT-%s","name":"Evento en Recinto Cerrado","description":"Debe fallar","category":"CONCERT","eventDate":"2027-12-01T20:00:00","minimumAge":18,"venueCode":"%s"}' \
+PAYLOAD_INACTIVE_VENUE=$(printf '{"eventCode":"EVT-INACT-%s","name":"Evento en Recinto Cerrado","description":"Debe fallar","category":"MUSIC","eventDate":"2027-12-01T20:00:00","minimumAge":18,"venueCode":"%s"}' \
     "${RUN_ID}" "${VENUE_INACTIVE_CODE}")
 run_http_test "TC-BIZ-004" "ADMIN intenta crear evento en recinto inactivo (${VENUE_INACTIVE_CODE}) -> 409 Conflict" \
     "POST" "/api/events" "409" "${ADMIN_TOKEN:-}" "${PAYLOAD_INACTIVE_VENUE}"

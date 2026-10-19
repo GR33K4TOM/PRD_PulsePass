@@ -24,18 +24,20 @@ SET active = false;
 
 -- 2. Eventos iniciales de referencia (Borrador y Publicado)
 INSERT INTO events (event_code, name, description, category, status, event_date, minimum_age, venue_id)
-SELECT 'EVT-SEED-DRAFT', 'Festival Borrador Oculto', 'No debe ser visible por público anónimo ni USER', 'CONCERT', 'DRAFT', TIMESTAMP '2027-06-15 20:00:00', 18, v.id
+SELECT 'EVT-SEED-DRAFT', 'Festival Borrador Oculto', 'No debe ser visible por público anónimo ni USER', 'MUSIC', 'DRAFT', TIMESTAMP '2027-06-15 20:00:00', 18, v.id
 FROM venues v WHERE v.code = 'VEN-SMR-01'
 ON CONFLICT (event_code) DO UPDATE
-SET status = 'DRAFT',
+SET category = 'MUSIC',
+    status = 'DRAFT',
     event_date = TIMESTAMP '2027-06-15 20:00:00',
     minimum_age = 18;
 
 INSERT INTO events (event_code, name, description, category, status, event_date, minimum_age, venue_id)
-SELECT 'CMF-2026', 'Caribbean Music Fest 2026', 'Festival principal publicado', 'FESTIVAL', 'PUBLISHED', TIMESTAMP '2027-08-20 20:00:00', 18, v.id
+SELECT 'CMF-2026', 'Caribbean Music Fest 2026', 'Festival principal publicado', 'MUSIC', 'PUBLISHED', TIMESTAMP '2027-08-20 20:00:00', 18, v.id
 FROM venues v WHERE v.code = 'VEN-SMR-01'
 ON CONFLICT (event_code) DO UPDATE
-SET status = 'PUBLISHED',
+SET category = 'MUSIC',
+    status = 'PUBLISHED',
     event_date = TIMESTAMP '2027-08-20 20:00:00',
     minimum_age = 18;
 

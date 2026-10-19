@@ -1,4 +1,4 @@
-# PRD_PulsePass - Release V-3.0.0
+# PRD_PulsePass - Release V-3.1.0
 
 PulsePass es un caso de estudio académico para el diseño e implementación incremental de las capas de **persistencia**, **servicios**, **controladores REST** y **seguridad stateless con JWT** de una plataforma de eventos, artistas y venta de entradas.
 

@@ -4,12 +4,19 @@ import com.example.PRD_PulsePass.dto.request.RegisterUserRequest;
 import com.example.PRD_PulsePass.dto.response.UserResponse;
 import com.example.PRD_PulsePass.exception.DuplicateResourceException;
 import com.example.PRD_PulsePass.exception.GlobalExceptionHandler;
+import com.example.PRD_PulsePass.security.CustomUserDetailsService;
+import com.example.PRD_PulsePass.security.JwtAuthenticationFilter;
+import com.example.PRD_PulsePass.security.JwtService;
+import com.example.PRD_PulsePass.security.RestAccessDeniedHandler;
+import com.example.PRD_PulsePass.security.RestAuthenticationEntryPoint;
+import com.example.PRD_PulsePass.security.SecurityConfig;
 import com.example.PRD_PulsePass.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -22,7 +29,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({
+        GlobalExceptionHandler.class,
+        SecurityConfig.class,
+        JwtAuthenticationFilter.class,
+        JwtService.class,
+        RestAuthenticationEntryPoint.class,
+        RestAccessDeniedHandler.class
+})
 class UserControllerTest {
 
     @Autowired
@@ -30,6 +44,9 @@ class UserControllerTest {
 
     @MockitoBean
     private UserService userService;
+
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
 
     @Test
     void testCtrlUsr001_registrarValido_returns201() throws Exception {
@@ -46,7 +63,8 @@ class UserControllerTest {
                     "lastName": "Gomez",
                     "phone": "3001234567",
                     "city": "Santa Marta",
-                    "birthDate": "1995-05-20"
+                    "birthDate": "1995-05-20",
+                    "password": "UnaFraseSeguraLarga2026!"
                 }
                 """;
 
@@ -56,7 +74,9 @@ class UserControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.username").value("andrea"))
-                .andExpect(jsonPath("$.email").value("andrea@email.com"));
+                .andExpect(jsonPath("$.email").value("andrea@email.com"))
+                .andExpect(jsonPath("$.password").doesNotExist())
+                .andExpect(jsonPath("$.passwordHash").doesNotExist());
 
         verify(userService).register(any(RegisterUserRequest.class));
     }
@@ -71,7 +91,8 @@ class UserControllerTest {
                     "lastName": "Gomez",
                     "phone": "3001234567",
                     "city": "Santa Marta",
-                    "birthDate": "1995-05-20"
+                    "birthDate": "1995-05-20",
+                    "password": "UnaFraseSeguraLarga2026!"
                 }
                 """;
 
@@ -101,7 +122,8 @@ class UserControllerTest {
                     "lastName": "Gomez",
                     "phone": "3001234567",
                     "city": "Santa Marta",
-                    "birthDate": "1995-05-20"
+                    "birthDate": "1995-05-20",
+                    "password": "UnaFraseSeguraLarga2026!"
                 }
                 """;
 
@@ -118,6 +140,7 @@ class UserControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "andrea", roles = "USER")
     void testCtrlUsr004_consultarPorEmail_returns200() throws Exception {
         UserResponse response = new UserResponse(
                 1L, "andrea", "andrea@email.com", true, "Andrea", "Gomez", "3001234567", "Santa Marta", LocalDate.of(1995, 5, 20)
@@ -133,6 +156,7 @@ class UserControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "andrea", roles = "USER")
     void testCtrlUsr005_consultarPorUsername_returns200() throws Exception {
         UserResponse response = new UserResponse(
                 1L, "andrea", "andrea@email.com", true, "Andrea", "Gomez", "3001234567", "Santa Marta", LocalDate.of(1995, 5, 20)

@@ -7,12 +7,19 @@ import com.example.PRD_PulsePass.dto.response.TicketResponse;
 import com.example.PRD_PulsePass.exception.BusinessRuleException;
 import com.example.PRD_PulsePass.exception.GlobalExceptionHandler;
 import com.example.PRD_PulsePass.exception.ResourceNotFoundException;
+import com.example.PRD_PulsePass.security.CustomUserDetailsService;
+import com.example.PRD_PulsePass.security.JwtAuthenticationFilter;
+import com.example.PRD_PulsePass.security.JwtService;
+import com.example.PRD_PulsePass.security.RestAccessDeniedHandler;
+import com.example.PRD_PulsePass.security.RestAuthenticationEntryPoint;
+import com.example.PRD_PulsePass.security.SecurityConfig;
 import com.example.PRD_PulsePass.service.TicketService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -26,7 +33,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TicketController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({
+        GlobalExceptionHandler.class,
+        SecurityConfig.class,
+        JwtAuthenticationFilter.class,
+        JwtService.class,
+        RestAuthenticationEntryPoint.class,
+        RestAccessDeniedHandler.class
+})
 class TicketControllerTest {
 
     @Autowired
@@ -35,7 +49,11 @@ class TicketControllerTest {
     @MockitoBean
     private TicketService ticketService;
 
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
+
     @Test
+    @WithMockUser(username = "andrea", roles = "USER")
     void testCtrlTkt001_compraValida_returns201() throws Exception {
         TicketResponse response = new TicketResponse(
                 1L, "TCK-0001", TicketType.VIP, new BigDecimal("250000.00"),
@@ -63,6 +81,7 @@ class TicketControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "andrea", roles = "USER")
     void testCtrlTkt002_requestInvalido_returns400() throws Exception {
         String invalidJson = """
                 {
@@ -85,6 +104,7 @@ class TicketControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "andrea", roles = "USER")
     void testCtrlTkt003_usuarioInexistente_returns404() throws Exception {
         when(ticketService.purchase(any(PurchaseTicketRequest.class)))
                 .thenThrow(new ResourceNotFoundException("User not found: notfound@email.com"));
@@ -110,6 +130,7 @@ class TicketControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "laura", roles = "USER")
     void testCtrlTkt004_reglaDeNegocio_returns409() throws Exception {
         when(ticketService.purchase(any(PurchaseTicketRequest.class)))
                 .thenThrow(new BusinessRuleException("User does not meet minimum age."));
@@ -135,6 +156,7 @@ class TicketControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "andrea", roles = "USER")
     void testCtrlTkt005_consultarTicket_returns200() throws Exception {
         TicketResponse response = new TicketResponse(
                 1L, "TCK-0001", TicketType.VIP, new BigDecimal("250000.00"),
@@ -151,6 +173,7 @@ class TicketControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "andrea", roles = "USER")
     void testCtrlTkt006_ticketsPorUsuario_returns200() throws Exception {
         TicketResponse response = new TicketResponse(
                 1L, "TCK-0001", TicketType.VIP, new BigDecimal("250000.00"),
@@ -167,6 +190,7 @@ class TicketControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "staff", roles = "STAFF")
     void testCtrlTkt007_ticketsPaidPorEvento_returns200() throws Exception {
         TicketResponse response = new TicketResponse(
                 1L, "TCK-0001", TicketType.VIP, new BigDecimal("250000.00"),
@@ -183,6 +207,7 @@ class TicketControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "andrea", roles = "USER")
     void testCtrlTkt008_cancelarValido_returns200() throws Exception {
         TicketResponse response = new TicketResponse(
                 1L, "TCK-0001", TicketType.VIP, new BigDecimal("250000.00"),
@@ -199,6 +224,7 @@ class TicketControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "andrea", roles = "USER")
     void testCtrlTkt009_cancelarInvalido_returns409() throws Exception {
         when(ticketService.cancel("TCK-0001"))
                 .thenThrow(new BusinessRuleException("Only PAID tickets can be cancelled."));
@@ -214,6 +240,7 @@ class TicketControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "laura", roles = "STAFF")
     void testCtrlTkt010_usarValido_returns200() throws Exception {
         TicketResponse response = new TicketResponse(
                 1L, "TCK-0001", TicketType.VIP, new BigDecimal("250000.00"),
@@ -230,6 +257,7 @@ class TicketControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "laura", roles = "STAFF")
     void testCtrlTkt011_usarInvalido_returns409() throws Exception {
         when(ticketService.markAsUsed("TCK-0001"))
                 .thenThrow(new BusinessRuleException("CANCELLED ticket cannot be used."));

@@ -38,7 +38,13 @@ build/
 ## env ##
 .env
 ### docs ###
+*[sS][eE][gG][uU][rR][iI][dD][aA][dD]*.md
 *[cC][aA][pP][aA]*.md
 *[cC][aA][pP][aA]*.pdf
+*[pP][rR][uU][eE][bB][aA][sS]*.md
+*[pP][rR][uU][eE][bB][aA][sS]*.pdf
+*[pP][rR][dD]*.pdf
+*[pP][rR][dD]*.md
+PRD_PulsePass_Pruebas_E2E_Postman_Manual.pdf
 Laboratorio práctico — DeepBlue Rescue_ Capa de Servicio.md
 PRD_PulsePass_Capa_Servicios-1.pdf

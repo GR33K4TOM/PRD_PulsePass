@@ -36,7 +36,7 @@ class UserServiceImplTest {
 
     @Test
     void register_validUser_returnsDto() {
-        RegisterUserRequest req = new RegisterUserRequest("user1", "user@test.com", "First", "Last", "123", "City", LocalDate.of(1990, 1, 1));
+        RegisterUserRequest req = new RegisterUserRequest("user1", "user@test.com", "First", "Last", "123", "City", LocalDate.of(1990, 1, 1), "TestPassword123!");
         User saved = new User();
         UserResponse res = new UserResponse(1L, "user1", "user@test.com", true, "First", "Last", "123", "City", LocalDate.of(1990, 1, 1));
         
@@ -53,7 +53,7 @@ class UserServiceImplTest {
 
     @Test
     void register_duplicatedUsername_throwsDuplicate() {
-        RegisterUserRequest req = new RegisterUserRequest("user1", "user@test.com", "First", "Last", "123", "City", LocalDate.of(1990, 1, 1));
+        RegisterUserRequest req = new RegisterUserRequest("user1", "user@test.com", "First", "Last", "123", "City", LocalDate.of(1990, 1, 1), "TestPassword123!");
         User existing = new User();
         existing.setUsername("user1");
         
@@ -65,7 +65,7 @@ class UserServiceImplTest {
 
     @Test
     void register_duplicatedEmail_throwsDuplicate() {
-        RegisterUserRequest req = new RegisterUserRequest("user2", "user@test.com", "First", "Last", "123", "City", LocalDate.of(1990, 1, 1));
+        RegisterUserRequest req = new RegisterUserRequest("user2", "user@test.com", "First", "Last", "123", "City", LocalDate.of(1990, 1, 1), "TestPassword123!");
         User existing = new User();
         
         when(userRepository.findAll()).thenReturn(List.of());
@@ -77,7 +77,7 @@ class UserServiceImplTest {
 
     @Test
     void register_futureBirthDate_throwsBusinessRule() {
-        RegisterUserRequest req = new RegisterUserRequest("user3", "user3@test.com", "First", "Last", "123", "City", LocalDate.now().plusDays(10));
+        RegisterUserRequest req = new RegisterUserRequest("user3", "user3@test.com", "First", "Last", "123", "City", LocalDate.now().plusDays(10), "TestPassword123!");
         
         when(userRepository.findAll()).thenReturn(List.of());
         when(userRepository.findByEmailIgnoreCase("user3@test.com")).thenReturn(Optional.empty());

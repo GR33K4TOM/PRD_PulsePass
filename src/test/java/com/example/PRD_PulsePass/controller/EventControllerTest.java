@@ -8,12 +8,19 @@ import com.example.PRD_PulsePass.dto.response.EventSummaryResponse;
 import com.example.PRD_PulsePass.exception.BusinessRuleException;
 import com.example.PRD_PulsePass.exception.GlobalExceptionHandler;
 import com.example.PRD_PulsePass.exception.ResourceNotFoundException;
+import com.example.PRD_PulsePass.security.CustomUserDetailsService;
+import com.example.PRD_PulsePass.security.JwtAuthenticationFilter;
+import com.example.PRD_PulsePass.security.JwtService;
+import com.example.PRD_PulsePass.security.RestAccessDeniedHandler;
+import com.example.PRD_PulsePass.security.RestAuthenticationEntryPoint;
+import com.example.PRD_PulsePass.security.SecurityConfig;
 import com.example.PRD_PulsePass.service.EventService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -26,7 +33,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(EventController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({
+        GlobalExceptionHandler.class,
+        SecurityConfig.class,
+        JwtAuthenticationFilter.class,
+        JwtService.class,
+        RestAuthenticationEntryPoint.class,
+        RestAccessDeniedHandler.class
+})
 class EventControllerTest {
 
     @Autowired
@@ -35,7 +49,11 @@ class EventControllerTest {
     @MockitoBean
     private EventService eventService;
 
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
+
     @Test
+    @WithMockUser(roles = "ADMIN")
     void testCtrlEvt001_crearValido_returns201() throws Exception {
         LocalDateTime date = LocalDateTime.now().plusDays(30);
         EventResponse response = new EventResponse(
@@ -69,6 +87,7 @@ class EventControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void testCtrlEvt002_requestInvalido_returns400() throws Exception {
         String invalidJson = """
                 {
@@ -140,6 +159,7 @@ class EventControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void testCtrlEvt006_publicarValido_returns200() throws Exception {
         EventResponse response = new EventResponse(
                 1L, "CMF-2026", "Caribbean Music Fest 2026", "Concierto anual",
@@ -157,6 +177,7 @@ class EventControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void testCtrlEvt007_publicarInvalido_returns409() throws Exception {
         when(eventService.publish("CMF-2026")).thenThrow(new BusinessRuleException("Only DRAFT events can be published."));
 
@@ -171,6 +192,7 @@ class EventControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void testCtrlEvt008_asociarArtista_returns200() throws Exception {
         EventResponse response = new EventResponse(
                 1L, "CMF-2026", "Caribbean Music Fest 2026", "Concierto anual",

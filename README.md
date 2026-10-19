@@ -1,4 +1,4 @@
-# PRD_PulsePass - Release V-3.0.0
+# PRD_PulsePass - Release V-3.1.0
 
 PulsePass es un caso de estudio académico para el diseño e implementación incremental de las capas de **persistencia**, **servicios**, **controladores REST** y **seguridad stateless con JWT** de una plataforma de eventos, artistas y venta de entradas.
 
@@ -122,6 +122,9 @@ Para ejecutar la suite completa de 98 pruebas (Persistencia con Testcontainers, 
 ```bash
 ./mvnw clean test
 ```
+
+### Pruebas End-to-End (E2E) con Bash y cURL
+El proyecto cuenta además con una suite de scripts multiplataforma (`Bash + cURL`) en la carpeta [`post-tests/`](./post-tests/) para validar de extremo a extremo los 22 endpoints, los flujos por rol (`USER`, `STAFF`, `ADMIN`), la seguridad JWT y las reglas de negocio. Para consultar su arquitectura e instrucciones detalladas de uso y ejecución, revisa el documento [**Guía de Pruebas End-to-End (`pruebas-e2e.md`)**](./pruebas-e2e.md).
 
 ---
 

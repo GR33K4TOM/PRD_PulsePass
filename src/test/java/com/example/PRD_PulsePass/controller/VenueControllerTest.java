@@ -3,6 +3,12 @@ package com.example.PRD_PulsePass.controller;
 import com.example.PRD_PulsePass.dto.response.VenueResponse;
 import com.example.PRD_PulsePass.exception.GlobalExceptionHandler;
 import com.example.PRD_PulsePass.exception.ResourceNotFoundException;
+import com.example.PRD_PulsePass.security.CustomUserDetailsService;
+import com.example.PRD_PulsePass.security.JwtAuthenticationFilter;
+import com.example.PRD_PulsePass.security.JwtService;
+import com.example.PRD_PulsePass.security.RestAccessDeniedHandler;
+import com.example.PRD_PulsePass.security.RestAuthenticationEntryPoint;
+import com.example.PRD_PulsePass.security.SecurityConfig;
 import com.example.PRD_PulsePass.service.VenueService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +26,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(VenueController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({
+        GlobalExceptionHandler.class,
+        SecurityConfig.class,
+        JwtAuthenticationFilter.class,
+        JwtService.class,
+        RestAuthenticationEntryPoint.class,
+        RestAccessDeniedHandler.class
+})
 class VenueControllerTest {
 
     @Autowired
@@ -28,6 +41,9 @@ class VenueControllerTest {
 
     @MockitoBean
     private VenueService venueService;
+
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
 
     @Test
     void testCtrlVen001_venueExistente_returns200() throws Exception {

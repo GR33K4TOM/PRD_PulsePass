@@ -14,7 +14,9 @@ import com.example.PRD_PulsePass.mapper.EventMapper;
 import com.example.PRD_PulsePass.repository.ArtistRepository;
 import com.example.PRD_PulsePass.repository.EventRepository;
 import com.example.PRD_PulsePass.repository.VenueRepository;
+import com.example.PRD_PulsePass.service.AuthorizationService;
 import com.example.PRD_PulsePass.service.EventService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,13 +32,22 @@ public class EventServiceImpl implements EventService {
     private final VenueRepository venueRepository;
     private final ArtistRepository artistRepository;
     private final EventMapper eventMapper;
+    private final AuthorizationService authorizationService;
 
     public EventServiceImpl(EventRepository eventRepository, VenueRepository venueRepository,
                             ArtistRepository artistRepository, EventMapper eventMapper) {
+        this(eventRepository, venueRepository, artistRepository, eventMapper, null);
+    }
+
+    @Autowired
+    public EventServiceImpl(EventRepository eventRepository, VenueRepository venueRepository,
+                            ArtistRepository artistRepository, EventMapper eventMapper,
+                            AuthorizationService authorizationService) {
         this.eventRepository = eventRepository;
         this.venueRepository = venueRepository;
         this.artistRepository = artistRepository;
         this.eventMapper = eventMapper;
+        this.authorizationService = authorizationService;
     }
 
     @Override
@@ -47,7 +58,7 @@ public class EventServiceImpl implements EventService {
         }
         Venue venue = venueRepository.findByCode(request.venueCode())
                 .orElseThrow(() -> new ResourceNotFoundException("Venue not found: " + request.venueCode()));
-        
+
         if (!Boolean.TRUE.equals(venue.getActive())) {
             throw new BusinessRuleException("Cannot create event in inactive venue.");
         }
@@ -75,9 +86,12 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public EventResponse findByCode(String eventCode) {
-        return eventRepository.findByEventCode(eventCode)
-                .map(eventMapper::toResponse)
+        Event event = eventRepository.findByEventCode(eventCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventCode));
+        if (authorizationService != null) {
+            authorizationService.checkCanViewEvent(event);
+        }
+        return eventMapper.toResponse(event);
     }
 
     @Override
@@ -112,22 +126,24 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventCode));
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new ResourceNotFoundException("Artist not found: " + artistId));
-        
+
         if (event.getStatus() == EventStatus.CANCELLED || event.getStatus() == EventStatus.FINISHED) {
             throw new BusinessRuleException("Cannot add artist to CANCELLED or FINISHED event.");
         }
-        
+
         if (event.getArtists().contains(artist)) {
             throw new BusinessRuleException("Artist already added to event.");
         }
-        
+
         event.getArtists().add(artist);
         return eventMapper.toResponse(eventRepository.save(event));
     }
 
     @Override
     public List<EventSummaryResponse> findByArtist(String stageName) {
+        boolean canSeeAll = authorizationService == null || authorizationService.isStaffOrAdmin();
         return eventRepository.findByArtistStageName(stageName).stream()
+                .filter(e -> canSeeAll || e.getStatus() == EventStatus.PUBLISHED)
                 .map(eventMapper::toSummary)
                 .toList();
     }

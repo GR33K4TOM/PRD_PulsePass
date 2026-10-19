@@ -1,0 +1,6 @@
+pulsepass:
+  security:
+    jwt:
+      issuer: ${PULSEPASS_JWT_ISSUER:pulsepass-api}
+      secret-base64: ${PULSEPASS_JWT_SECRET_BASE64:dGVzdC1vbmx5LW5vdC1mb3ItcHJvZHVjdGlvbi1zZWNyZXQta2V5LTIwMjYtMzJieXRlcw==}
+      access-token-ttl: PT15M

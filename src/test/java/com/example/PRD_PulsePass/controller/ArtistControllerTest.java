@@ -3,6 +3,12 @@ package com.example.PRD_PulsePass.controller;
 import com.example.PRD_PulsePass.dto.response.ArtistResponse;
 import com.example.PRD_PulsePass.exception.GlobalExceptionHandler;
 import com.example.PRD_PulsePass.exception.ResourceNotFoundException;
+import com.example.PRD_PulsePass.security.CustomUserDetailsService;
+import com.example.PRD_PulsePass.security.JwtAuthenticationFilter;
+import com.example.PRD_PulsePass.security.JwtService;
+import com.example.PRD_PulsePass.security.RestAccessDeniedHandler;
+import com.example.PRD_PulsePass.security.RestAuthenticationEntryPoint;
+import com.example.PRD_PulsePass.security.SecurityConfig;
 import com.example.PRD_PulsePass.service.ArtistService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +26,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ArtistController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({
+        GlobalExceptionHandler.class,
+        SecurityConfig.class,
+        JwtAuthenticationFilter.class,
+        JwtService.class,
+        RestAuthenticationEntryPoint.class,
+        RestAccessDeniedHandler.class
+})
 class ArtistControllerTest {
 
     @Autowired
@@ -28,6 +41,9 @@ class ArtistControllerTest {
 
     @MockitoBean
     private ArtistService artistService;
+
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
 
     @Test
     void testCtrlArt001_buscarPorId_returns200() throws Exception {

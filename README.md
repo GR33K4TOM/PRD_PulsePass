@@ -1,102 +1,127 @@
-# PRD_PulsePass - V-2.0.0
+# PRD_PulsePass - Release V-3.0.0
 
-PulsePass es un caso de estudio académico para el diseño e implementación de las capas de persistencia, servicios y controladores REST de una plataforma de eventos y venta de entradas.
+PulsePass es un caso de estudio académico para el diseño e implementación incremental de las capas de **persistencia**, **servicios**, **controladores REST** y **seguridad stateless con JWT** de una plataforma de eventos, artistas y venta de entradas.
 
 ## ¿Qué se espera?
-Demostrar la capacidad de transformar requisitos de negocio en un modelo relacional robusto, coordinar la lógica transaccional a través de servicios desacoplados y exponer una API REST segura, predecible y estandarizada utilizando Spring Boot, Spring Data JPA, MapStruct, Bean Validation, Flyway, Testcontainers y MockMvc.
+Demostrar la capacidad de transformar requisitos de negocio en un modelo relacional robusto, coordinar la lógica transaccional a través de servicios desacoplados, exponer una API REST estandarizada y proteger todas las operaciones mediante autenticación con BCrypt, emisión/validación de JWT firmados (HS256), control de acceso por roles (`USER`, `STAFF`, `ADMIN`) y validación de propiedad de recursos (anti-IDOR).
 
 ## Sección Técnica
 - **Lenguaje:** Java 21
 - **Framework:** Spring Boot 4.x / Spring MVC
-- **ORM:** Spring Data JPA / Hibernate (modo `ddl-auto=validate`)
+- **Seguridad:** Spring Security 7.x + JJWT 0.13.0 (HS256 Stateless Bearer)
+- **ORM:** Spring Data JPA / Hibernate (`ddl-auto=validate`)
 - **Base de Datos:** PostgreSQL
-- **Migraciones:** Flyway
+- **Migraciones:** Flyway (`V1` a `V4`)
 - **Mapeo:** MapStruct 1.6.3
 - **Validación:** Bean Validation (Jakarta Validation)
 - **Pruebas:** 
   - Integración: Testcontainers (PostgreSQL real)
-  - Unitarias de Servicio: JUnit 5, Mockito, AssertJ
-  - Pruebas de Controladores: `@WebMvcTest`, MockMvc, `@MockitoBean`
+  - Unitarias de Servicio y Seguridad: JUnit 5, Mockito, AssertJ
+  - Pruebas Web y de Seguridad HTTP: `@WebMvcTest`, MockMvc, `spring-security-test`, `@MockitoBean`
 
 ---
 
-## Estructura de la Capa de Persistencia
-1. **Modelo:** Entidades JPA (`Venue`, `Event`, `Artist`, `User`, `UserProfile`, `Ticket`) mapeadas contra un esquema relacional estricto con claves foráneas, restricciones de unicidad (`UNIQUE`) y validaciones de rango (`CHECK`).
+## Estructura de la Capa de Persistencia (Fase 1)
+1. **Modelo:** Entidades JPA (`Venue`, `Event`, `Artist`, `User`, `UserProfile`, `Ticket`, `UserCredential`, `UserRole`) mapeadas contra un esquema relacional estricto con claves foráneas, restricciones de unicidad (`UNIQUE`) y validaciones de rango (`CHECK`).
 2. **Migraciones:** Versionado de la base de datos en `src/main/resources/db/migration/`:
-   - `V1`: Esquema base y restricciones de integridad física y de negocio.
-   - `V2`: Carga de catálogo inicial de artistas.
-   - `V3`: Incorporación de columna opcional de streaming URL a eventos.
+   - `V1__create_schema.sql`: Esquema base y restricciones de integridad física y de negocio.
+   - `V2__insert_initial_artists.sql`: Carga de catálogo inicial de artistas.
+   - `V3__add_streaming_url_to_event.sql`: Incorporación de columna opcional de streaming URL a eventos.
+   - `V4__security_credentials_roles.sql`: Tablas `user_credentials` (1:1 con `users`) y `user_roles` (`USER`, `STAFF`, `ADMIN`), más función segura para activación de cuentas legadas.
 3. **Consultas:** Repositorios Spring Data utilizando *Query Methods* y consultas *JPQL* con agregaciones (`COUNT`) y múltiples uniones (`JOIN`).
 
 ---
 
-## Estructura de la Capa de Servicios
-1. **DTOs (Data Transfer Objects):** Uso exclusivo de `records` inmutables de Java 21 para definir contratos de entrada y salida, asegurando que ninguna entidad JPA sea expuesta fuera de la capa de servicio.
-2. **Mapeos (MapStruct):** Interfaces dedicadas para transformaciones compiladas y optimizadas entre entidades y DTOs sin reflexión manual.
+## Estructura de la Capa de Servicios (Fase 2)
+1. **DTOs (Data Transfer Objects):** Uso exclusivo de `records` inmutables de Java 21 para definir contratos de entrada y salida, asegurando que ninguna entidad JPA ni hash de contraseña sea expuesto fuera de la capa de servicio.
+2. **Mapeos (MapStruct):** Interfaces dedicadas para transformaciones compiladas y optimizadas entre entidades y DTOs.
 3. **Lógica de Negocio y Transacciones:**
-   - Servicios organizados por interfaces e implementaciones (`*ServiceImpl`) con inyección de dependencias por constructor (`final`).
-   - Control transaccional explícito: `@Transactional(readOnly = true)` en consultas y `@Transactional` atómico en escrituras y transiciones de estado.
-   - Validación de reglas de dominio (capacidad de aforo, mayoría de edad, eventos publicados, tickets pagados, etc.).
+   - Servicios organizados por interfaces e implementaciones (`*ServiceImpl`) con inyección de dependencias por constructor.
+   - Control transaccional explícito: `@Transactional(readOnly = true)` en consultas y `@Transactional` atómico en escrituras (como el registro simultáneo de usuario, perfil, credencial BCrypt y rol `USER`, o la compra de tickets con actualización a `SOLD_OUT`).
 4. **Manejo de Errores de Dominio:** Excepciones específicas (`ResourceNotFoundException`, `BusinessRuleException`, `DuplicateResourceException`).
 
 ---
 
-## Estructura de la Capa de Controladores REST
-1. **Controladores Delgados:** Responsabilidad acotada a transporte HTTP, enrutamiento, códigos de respuesta semánticos y validación sintáctica. No acceden a repositorios ni duplican reglas de negocio.
+## Estructura de la Capa de Controladores REST (Fase 3)
+1. **Controladores Delgados:** Responsabilidad acotada a transporte HTTP, enrutamiento, códigos de respuesta semánticos y validación sintáctica.
 2. **Validación Declarativa:** Uso de Bean Validation (`@Valid`, `@NotBlank`, `@NotNull`, `@Min`, `@Email`, `@Size`) en los DTOs de request antes de invocar la capa de servicio.
-3. **Manejo Global de Excepciones:** Componente `@RestControllerAdvice` (`GlobalExceptionHandler`) que centraliza la captura de excepciones y garantiza respuestas homogéneas bajo la estructura `ErrorResponse(timestamp, status, error, message, details)`:
+3. **Manejo Global de Excepciones:** Componente `@RestControllerAdvice` (`GlobalExceptionHandler`) junto con `RestAuthenticationEntryPoint` y `RestAccessDeniedHandler` que garantizan respuestas homogéneas bajo la estructura `ErrorResponse(timestamp, status, error, message, details)`:
    - `400 Bad Request`: Errores de validación estructural o JSON mal formado.
+   - `401 Unauthorized`: Credenciales inválidas, ausencia de token Bearer, token expirado/manipulado o usuario inactivo.
+   - `403 Forbidden`: Usuario autenticado sin el rol requerido o intento de operar sobre recursos de otro usuario (anti-IDOR).
    - `404 Not Found`: Búsqueda de recursos no encontrados (`ResourceNotFoundException`).
    - `409 Conflict`: Conflictos de unicidad (`DuplicateResourceException`) o reglas de negocio incumplidas (`BusinessRuleException`).
-   - `500 Internal Server Error`: Errores internos no controlados.
-
-### Catálogo de Endpoints Principales (20 operaciones cubiertas)
-| Método | Endpoint | Descripción | Código Éxito |
-|---|---|---|---|
-| `GET` | `/api/venues/{code}` | Consulta venue por código de negocio | 200 OK |
-| `GET` | `/api/venues/active` | Lista venues activos | 200 OK |
-| `POST` | `/api/events` | Creación de nuevo evento en DRAFT | 201 Created |
-| `GET` | `/api/events/{eventCode}` | Consulta detalle de evento por código | 200 OK |
-| `GET` | `/api/events/published` | Cartelera de eventos publicados | 200 OK |
-| `PATCH`| `/api/events/{eventCode}/publish` | Publicar evento DRAFT | 200 OK |
-| `POST` | `/api/events/{eventCode}/artists/{artistId}` | Asociar artista a evento | 200 OK |
-| `GET` | `/api/events/by-artist?stageName=...` | Buscar eventos por nombre de artista | 200 OK |
-| `GET` | `/api/artists/{id}` | Consulta artista por ID numérico | 200 OK |
-| `GET` | `/api/artists/by-stage-name?stageName=...` | Consulta artista por nombre artístico | 200 OK |
-| `GET` | `/api/artists/active` | Lista artistas activos | 200 OK |
-| `POST` | `/api/users` | Registro de usuario y perfil | 201 Created |
-| `GET` | `/api/users/by-email?email=...` | Consulta usuario por email | 200 OK |
-| `GET` | `/api/users/by-username?username=...` | Consulta usuario por username | 200 OK |
-| `POST` | `/api/tickets` | Compra atómica de entrada | 201 Created |
-| `GET` | `/api/tickets/{ticketCode}` | Consulta entrada por código | 200 OK |
-| `GET` | `/api/tickets/by-user?email=...` | Listar entradas de un usuario | 200 OK |
-| `GET` | `/api/events/{eventCode}/tickets/paid` | Listar entradas PAID de un evento | 200 OK |
-| `PATCH`| `/api/tickets/{ticketCode}/cancel` | Cancelar entrada PAID | 200 OK |
-| `PATCH`| `/api/tickets/{ticketCode}/use` | Marcar entrada PAID como usada | 200 OK |
+   - `500 Internal Server Error`: Errores internos no controlados (sin exponer stack traces).
 
 ---
 
-## Capa de Seguridad (Próxima Fase)
-<!-- Esta sección se encuentra preparada para la siguiente fase del proyecto, donde se implementará la capa de seguridad con Spring Security, autenticación y autorización (JWT/OAuth2). -->
+## Estructura de la Capa de Seguridad (Fase 4)
+1. **Autenticación y Registro Seguro:**
+   - Contraseñas almacenadas exclusivamente mediante hash irreversible `BCryptPasswordEncoder` en `user_credentials`.
+   - Registro público (`POST /api/users`) exige contraseña de entre 12 y 72 caracteres y asigna exclusivamente `ROLE_USER` dentro de la misma transacción.
+2. **Emisión y Validación de JWT (`JwtService`):**
+   - Tokens JWS firmados con algoritmo `HS256` utilizando JJWT `0.13.0` y clave secreta en Base64 de mínimo 32 bytes (`PULSEPASS_JWT_SECRET_BASE64`).
+   - Claims obligatorios validados en cada solicitud: `sub` (ID persistente del usuario), `iss` (`pulsepass-api`), `iat`, `exp` (15 minutos / 900 segundos) y `jti`.
+3. **Filtro Stateless y Revalidación (`JwtAuthenticationFilter` + `CustomUserDetailsService`):**
+   - API 100% *stateless* (`SessionCreationPolicy.STATELESS`), sin `JSESSIONID` ni aceptación de tokens por query string.
+   - Cada solicitud con encabezado `Authorization: Bearer <token>` verifica la firma/vigencia del JWT y consulta en base de datos el estado actual (`active = true`) y los roles vigentes del usuario.
+4. **Roles y Control de Propiedad (`AuthorizationService`):**
+   - **`ROLE_USER`:** Puede comprar entradas únicamente para su propio correo, consultar su propio perfil/entradas y cancelar únicamente sus propias entradas pagadas.
+   - **`ROLE_STAFF`:** Personal operativo; puede consultar entradas por código, listar entradas pagadas de un evento y marcar entradas como usadas (`PATCH /api/tickets/{ticketCode}/use`), además de visualizar eventos no publicados. *(Limitación documentada del MVP: autorización global sobre eventos hasta que una fase futura incorpore asignación de staff por evento).*
+   - **`ROLE_ADMIN`:** Administración de eventos (`POST /api/events`, publicar eventos, asociar artistas) y acceso administrativo autorizado.
+
+### Catálogo Completo de Endpoints y Matriz de Autorización (22 operaciones)
+| Método | Endpoint | Acceso / Rol Requerido | Regla de Propiedad / Visibilidad | Código Éxito |
+|---|---|---|---|---|
+| `POST` | `/api/auth/login` | Público | Autentica username/email + password y emite JWT | 200 OK |
+| `GET` | `/api/auth/me` | Autenticado (Bearer) | Retorna identidad y roles del principal actual | 200 OK |
+| `GET` | `/api/venues/{code}` | Público | — | 200 OK |
+| `GET` | `/api/venues/active` | Público | Solo venues activos | 200 OK |
+| `POST` | `/api/events` | `ADMIN` | — | 201 Created |
+| `GET` | `/api/events/{eventCode}` | Público / `STAFF` / `ADMIN` | Público solo si `PUBLISHED`; otros estados requieren `STAFF`/`ADMIN` | 200 OK |
+| `GET` | `/api/events/published` | Público | Solo eventos `PUBLISHED` | 200 OK |
+| `PATCH`| `/api/events/{eventCode}/publish` | `ADMIN` | — | 200 OK |
+| `POST` | `/api/events/{eventCode}/artists/{artistId}` | `ADMIN` | — | 200 OK |
+| `GET` | `/api/events/by-artist?stageName=...` | Público / `STAFF` / `ADMIN` | Público filtra solo `PUBLISHED`; `STAFF`/`ADMIN` ven todos los estados | 200 OK |
+| `GET` | `/api/artists/{id}` | Público | — | 200 OK |
+| `GET` | `/api/artists/by-stage-name?stageName=...` | Público | — | 200 OK |
+| `GET` | `/api/artists/active` | Público | Solo artistas activos | 200 OK |
+| `POST` | `/api/users` | Público | Crea cuenta con rol inicial `USER` y hash BCrypt | 201 Created |
+| `GET` | `/api/users/by-email?email=...` | `USER` / `ADMIN` | `USER` solo su propio usuario (`userId`); o `ADMIN` | 200 OK |
+| `GET` | `/api/users/by-username?username=...` | `USER` / `ADMIN` | `USER` solo su propio usuario (`userId`); o `ADMIN` | 200 OK |
+| `POST` | `/api/tickets` | `USER` | `userEmail` debe pertenecer al usuario autenticado | 201 Created |
+| `GET` | `/api/tickets/{ticketCode}` | `USER` / `STAFF` / `ADMIN` | `USER` solo si es propietario del ticket; o `STAFF`/`ADMIN` | 200 OK |
+| `GET` | `/api/tickets/by-user?email=...` | `USER` / `ADMIN` | `USER` solo sus propios tickets; o `ADMIN` | 200 OK |
+| `GET` | `/api/events/{eventCode}/tickets/paid` | `STAFF` / `ADMIN` | — | 200 OK |
+| `PATCH`| `/api/tickets/{ticketCode}/cancel` | `USER` / `ADMIN` | `USER` solo si es propietario del ticket; o `ADMIN` | 200 OK |
+| `PATCH`| `/api/tickets/{ticketCode}/use` | `STAFF` / `ADMIN` | — | 200 OK |
 
 ---
 
-## Cómo Usar y Ejecutar Pruebas
+## Cómo Configurar y Ejecutar Pruebas
 
-Para ejecutar la suite completa de pruebas (Persistencia con Testcontainers, Servicios con Mockito y Controladores con MockMvc):
+### Variables de Entorno
+Copiar la plantilla `.env.example` hacia `.env` y configurar una clave secreta Base64 de al menos 32 bytes para ejecución local:
+
+```bash
+cp .env.example .env
+# Ejemplo para generar un secreto local seguro de 32 bytes en Base64:
+openssl rand -base64 32
+```
+
+Variables utilizadas por la aplicación (`application.yaml`):
+- `DB_URL`, `DB_USER`, `DB_PASSWORD`: Conexión a PostgreSQL.
+- `PULSEPASS_JWT_ISSUER`: Emisor esperado del token (por defecto `pulsepass-api`).
+- `PULSEPASS_JWT_SECRET_BASE64`: Clave secreta HMAC-SHA256 en Base64 (mínimo 32 bytes decodificados; la aplicación falla al iniciar si está ausente o es débil).
+
+*(En las pruebas automatizadas con Maven, el archivo `src/test/resources/application.yaml` provee una clave ficticia exclusiva para el entorno de test).*
+
+### Ejecución de Pruebas Automatizadas
+Para ejecutar la suite completa de 98 pruebas (Persistencia con Testcontainers, Servicios con Mockito, Controladores y Seguridad con MockMvc):
 
 ```bash
 ./mvnw clean test
 ```
-
-### Variables de Entorno
-Copiar el archivo de plantilla `.env.example` hacia `.env` según la configuración del entorno local:
-
-```bash
-cp .env.example .env
-```
-
-*(El archivo `.env` se encuentra excluido de control de versiones y contiene únicamente parámetros de conexión sin credenciales sensibles).*
 
 ---
 
@@ -110,7 +135,7 @@ cp .env.example .env
 3. **¿Qué consultas pueden expresarse claramente como Query Methods y cuáles justifican JPQL?**  
    Las búsquedas directas por atributos simples o navegación de relaciones básicas (como `findByCode` o `findByStatusOrderByEventDateAsc`) son idóneas para Query Methods. Las que requieren agregaciones (`COUNT`), uniones complejas (`JOIN`) o filtros sobre tablas intermedias (conteo de entradas pagadas o búsqueda de eventos por artista) justifican el uso explícito de JPQL.
 4. **¿Qué consecuencias tendría modificar V1 después de haberla aplicado en un ambiente compartido?**  
-   Se alteraría el *checksum* registrado en `flyway_schema_history`, provocando que Flyway aborte el arranque de la aplicación por incoherencia de migración. Todo cambio en esquema debe realizarse mediante migraciones incrementales (`V2`, `V3`).
+   Se alteraría el *checksum* registrado en `flyway_schema_history`, provocando que Flyway aborte el arranque de la aplicación por incoherencia de migración. Todo cambio en esquema debe realizarse mediante migraciones incrementales (`V2`, `V3`, `V4`).
 5. **¿Qué diferencias podría ocultar una prueba con H2 frente a PostgreSQL?**  
    Diferencias de sintaxis en funciones nativas, soporte de tipos específicos, evaluación estricta de restricciones y transacciones concurrentes, y validación exacta de las migraciones SQL de producción.
 6. **¿Cómo evolucionaría el modelo para soportar inventario de tickets y evitar sobreventa?**  
@@ -178,4 +203,4 @@ cp .env.example .env
 9. **¿Cómo verificarías que un request inválido nunca invoca el Service?**  
    Utilizando `verify(serviceMock, never()).metodo(...)` de Mockito en la prueba de MockMvc tras enviar un payload que viole Bean Validation.
 10. **¿Qué cambios serían necesarios para agregar autenticación JWT en una fase posterior?**  
-    Incorporar dependencias de Spring Security y JWT, configurar un `SecurityFilterChain`, crear un filtro para interceptar y validar el token en el encabezado `Authorization`, y asociar el usuario autenticado al `SecurityContext`.
+    Incorporar dependencias de Spring Security y JJWT, configurar un `SecurityFilterChain` stateless, crear un filtro `OncePerRequestFilter` para interceptar y validar el token en el encabezado `Authorization: Bearer`, y asociar el `SecurityPrincipal` al `SecurityContext`.

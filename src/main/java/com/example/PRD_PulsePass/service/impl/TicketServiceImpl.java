@@ -4,7 +4,6 @@ import com.example.PRD_PulsePass.domain.Event;
 import com.example.PRD_PulsePass.domain.EventStatus;
 import com.example.PRD_PulsePass.domain.Ticket;
 import com.example.PRD_PulsePass.domain.TicketStatus;
-import com.example.PRD_PulsePass.domain.TicketType;
 import com.example.PRD_PulsePass.domain.User;
 import com.example.PRD_PulsePass.dto.request.PurchaseTicketRequest;
 import com.example.PRD_PulsePass.dto.response.TicketResponse;
@@ -14,7 +13,9 @@ import com.example.PRD_PulsePass.mapper.TicketMapper;
 import com.example.PRD_PulsePass.repository.EventRepository;
 import com.example.PRD_PulsePass.repository.TicketRepository;
 import com.example.PRD_PulsePass.repository.UserRepository;
+import com.example.PRD_PulsePass.service.AuthorizationService;
 import com.example.PRD_PulsePass.service.TicketService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,18 +33,31 @@ public class TicketServiceImpl implements TicketService {
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
     private final TicketMapper ticketMapper;
+    private final AuthorizationService authorizationService;
 
     public TicketServiceImpl(TicketRepository ticketRepository, UserRepository userRepository,
                              EventRepository eventRepository, TicketMapper ticketMapper) {
+        this(ticketRepository, userRepository, eventRepository, ticketMapper, null);
+    }
+
+    @Autowired
+    public TicketServiceImpl(TicketRepository ticketRepository, UserRepository userRepository,
+                             EventRepository eventRepository, TicketMapper ticketMapper,
+                             AuthorizationService authorizationService) {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
         this.eventRepository = eventRepository;
         this.ticketMapper = ticketMapper;
+        this.authorizationService = authorizationService;
     }
 
     @Override
     @Transactional
     public TicketResponse purchase(PurchaseTicketRequest request) {
+        if (authorizationService != null) {
+            authorizationService.checkCanPurchaseForEmail(request.userEmail());
+        }
+
         User user = userRepository.findByEmailIgnoreCase(request.userEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + request.userEmail()));
         if (!Boolean.TRUE.equals(user.getActive())) {
@@ -104,15 +118,23 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public TicketResponse findByCode(String ticketCode) {
-        return ticketRepository.findAll().stream() // Not ideal for prod, but we didn't add findByTicketCode in repo initially. Wait, findByTicketCode may exist.
+        Ticket ticket = ticketRepository.findAll().stream()
                 .filter(t -> t.getTicketCode().equals(ticketCode))
                 .findFirst()
-                .map(ticketMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketCode));
+
+        if (authorizationService != null) {
+            authorizationService.checkCanReadTicket(ticket);
+        }
+
+        return ticketMapper.toResponse(ticket);
     }
 
     @Override
     public List<TicketResponse> findByUserEmail(String email) {
+        if (authorizationService != null) {
+            authorizationService.checkCanReadUserTickets(email);
+        }
         return ticketRepository.findByUserEmailIgnoreCase(email).stream()
                 .map(ticketMapper::toResponse)
                 .toList();
@@ -132,6 +154,10 @@ public class TicketServiceImpl implements TicketService {
                 .filter(t -> t.getTicketCode().equals(ticketCode))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketCode));
+
+        if (authorizationService != null) {
+            authorizationService.checkCanCancelTicket(ticket);
+        }
 
         if (ticket.getStatus() != TicketStatus.PAID) {
             throw new BusinessRuleException("Only PAID tickets can be cancelled.");

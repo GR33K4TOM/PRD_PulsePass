@@ -123,6 +123,9 @@ Para ejecutar la suite completa de 98 pruebas (Persistencia con Testcontainers, 
 ./mvnw clean test
 ```
 
+### Pruebas End-to-End (E2E) con Bash y cURL
+El proyecto cuenta además con una suite de scripts multiplataforma (`Bash + cURL`) en la carpeta [`post-tests/`](./post-tests/) para validar de extremo a extremo los 22 endpoints, los flujos por rol (`USER`, `STAFF`, `ADMIN`), la seguridad JWT y las reglas de negocio. Para consultar su arquitectura e instrucciones detalladas de uso y ejecución, revisa el documento [**Guía de Pruebas End-to-End (`pruebas-e2e.md`)**](./pruebas-e2e.md).
+
 ---
 
 ## Preguntas para el equipo
